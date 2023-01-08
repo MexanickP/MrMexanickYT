@@ -9,3 +9,4 @@ local whitelist = {"MrMexanickYT",
 "angelinadsa",
 "Kirillbroyt22",
 }
+return whitelist
