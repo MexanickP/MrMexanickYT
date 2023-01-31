@@ -1,0 +1,39 @@
+local whitelist = {"MrMexanickYT",
+"demonYT32",
+"demonYT322",
+"Egor_Staff",
+"Qwear11",
+"top4iiii",
+"MrTop4ikPlayYT",
+"Nikita197675",
+"angelinadsa",
+"Kirillbroyt22",
+"AIisaMikaelson",
+"7cccy",
+"RofMikaelson",
+"RofSerpiente",
+"0yha",
+"WWWMWWWWWWMWWMWWWWWW",
+"Rasonka",
+"Adil_aid",
+"B_epa",
+"gillhi1",
+"vNikkyy",
+"Miskaur_3",
+"vNCC1337",
+"QWER1111111112",
+"ZEF0302",
+}
+game.ReplicatedStorage.RemoteEvent:FireServer({"Respawn"})
+local CHARN = game.Players.LocalPlayer.Character
+CHARN:GetPropertyChangedSignal("Name"):Connect(function()
+game.Players.LocalPlayer:Kick("Try again hack my hub ueban :)")
+end)
+local igrok = game.Players.LocalPlayer
+local somebool = table.find(whitelist, igrok.Character.Name)
+task.wait(5)
+if not somebool then
+igrok:Kick("U not whitelited, try again yeban :)")
+else print("Script loading...")
+loadstring(game:HttpGet('https://raw.githubusercontent.com/MexanickP/MrMexanickYT/main/Hub',true))()
+end
