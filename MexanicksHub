@@ -29,7 +29,7 @@ local CHARN = game.Players.LocalPlayer.Character
 CHARN:GetPropertyChangedSignal("Name"):Connect(function()
 game.Players.LocalPlayer:Kick("Try again hack my hub ueban :)")
 end)
-wait(2.5)
+wait(5)
 local igrok = game.Players.LocalPlayer
 if not table.find(whitelist, igrok.Character.Name) then
 igrok:Kick("U not whitelited, try again yeban :)")
