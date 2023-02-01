@@ -23,6 +23,7 @@ local whitelist = {"MrMexanickYT",
 "vNCC1337",
 "QWER1111111112",
 "ZEF0302",
+"Shaim_Shaim",
 }
 game.ReplicatedStorage.RemoteEvent:FireServer({"Respawn"})
 local CHARN = game.Players.LocalPlayer.Character
