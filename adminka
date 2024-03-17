@@ -1,0 +1,573 @@
+local RS = game:GetService("ReplicatedStorage")
+local plrs = game:GetService("Players")
+local https = game:GetService("HttpService")
+local AdminModule = require(RS:WaitForChild("Admins"))
+local Remotes = RS:WaitForChild("AdminRemotes")
+local Ranks = {
+	["AdminHubCreator"] = 0,
+	["Owner"] = 1,
+	["Head Developer"] = 2,
+	["Developer"] = 3,
+	["Head Admin"] = 4,
+	["Assistant Head Admin"] = 5,
+	["Admin"] = 6,
+	["Moderator"] = 7,
+	["Helper"] = 8,
+	["LeaderFraction"] = 9,
+}
+
+local MVD = {
+	[0] = "Стажёр",
+	[1] = "Рядовой",
+	[2] = "Младший-Сержант",
+	[3] = "Сержант",
+	[4] = "Старший-Сержант",
+	[5] = "Старшина",
+	[6] = "Прапорщик",
+	[7] = "Старший-Прапорщик",
+	[8] = "Младший-Лейтенант",
+	[9] = "Лейтенант",
+	[10] = "Старший-Лейтенант",
+	[11] = "Капитан",
+	[12] = "Майор",
+	[13] = "Подполковник",
+	[14] = "Полковник",
+	[15] = "Генерал-Майор",
+	[16] = "Генерал-Лейтенант",
+	[17] = "Генерал-Полковник",
+	[20] =  "Зам руководителя МВД",
+	[25] =  "Верховный Зам руководителя МВД",
+	[30] =  "Руководитель МВД",
+}
+
+local OPG = {
+	[0] = "Участник ОПГ",
+	[1] = "Соучастник",
+	[2] = "Свояк",
+	[3] = "Освоявшийся",
+	[4] = "Пахан",
+	[5] = "Поставщик",
+	[6] = "Настаивщийся",
+	[7] = "Пацан",
+	[8] = "Лицемерный",
+	[9] = "Стрелок",
+	[10] = "Бешенный",
+	[11] = "Завоеватель",
+	[12] = "Блатной",
+	[13] = "Босяк",
+	[14] = "Вор в законе",
+	[15] = "Дуншапер",
+	[16] = "Трухард",
+	[17] = "Сорвиголова",
+	[20] = "Deputy Leader",
+	[25] = "Leader",
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+local DSS = game:GetService("DataStoreService")
+local AdminDSS = DSS:GetDataStore("AdminList2")
+local key = "xD%vzp]tB[M(ur&Ygh!AP"
+local ExampleFullList = {
+	["AdminList"] = {["617819196"] = "AdminHubCreator"},
+	["PermBan"] = {},
+	["TempBan"] = {},
+	["TempBHist"] = {},
+	["GotMoney"] = {},
+}
+local ServerList = {
+	["Ban"] = {},
+	["Mute"] = {},
+}
+
+local DataList = AdminDSS:GetAsync(key)
+
+if DataList == nil then
+	AdminDSS:SetAsync(key,ExampleFullList)
+end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+local function GetPlayer(Plr):"Полный ник/Id"
+	local UserID = plrs:GetUserIdFromNameAsync(Plr)
+	Plr = string.lower(Plr)
+	for _, player in ipairs(plrs:GetPlayers()) do
+		if player.DisplayName:lower():sub(1, #Plr) == Plr or player.Name:lower():sub(1, #Plr) == Plr then
+			return player
+		end
+	end
+	return UserID
+end
+
+local function GetFullRole(Rol):"Полное название роли"
+	local full = if MVD[Rol] then MVD[Rol] else OPG[Rol]
+	local rol = string.lower(Rol)
+	for Priority, Rol in pairs(MVD) do
+		if Rol:lower():sub(1,#rol) == rol then
+			return rol
+		end
+	end
+	for Priority, Rol in pairs(OPG) do
+		if Rol:lower():sub(1,#rol) == rol then
+			return rol
+		end
+	end
+	if not full then
+		return nil
+	else
+		return full
+	end
+end
+
+local function GetCar(CarName):"Полное название машины"
+	local carn = string.lower(CarName)
+	for _, car in pairs(game:GetService("ServerStorage").CarsStorage:GetChildren()) do
+		if car.Name:lower():sub(1, #carn) == carn then
+			return car
+		end
+	end
+end
+
+local function GetRank(NRank):"Полный ранг"
+	NRank = string.lower(NRank)
+	for Rank, Priority in pairs(Ranks) do
+		if Rank:lower():sub(1,#NRank) == NRank or NRank == tostring(Priority) then
+			return Rank,Priority
+		end
+	end
+	return nil
+end
+
+local function Save():"Сохраняет все админ данные"
+	AdminDSS:SetAsync(key,DataList)
+end
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+game.Players.PlayerAdded:Connect(function(plr)
+
+	if DataList.PermBan[tostring(plr.UserId)] then
+		local reason = DataList.PermBan[tostring(plr.UserId)]["Reason"]
+		plr:Kick(reason)
+	end
+	
+	if DataList.TempBan[tostring(plr.UserId)] then
+		if DataList.TempBan[tostring(plr.UserId)]["Ended"] > os.time() then
+			local reason = DataList.TempBan[tostring(plr.UserId)]["Reason"]
+			plr:Kick(reason)
+		else
+			local histban = DataList.TempBan[tostring(plr.UserId)][1]
+			table.insert(DataList.TempBHist[tostring(plr.UserId)],histban)
+			table.remove(DataList.TempBan[tostring(plr.UserId)],1)
+		end
+	end
+	
+	if ServerList.Ban[tostring(plr.UserId)] then
+		local reason = ServerList.Ban[tostring(plr.UserId)]
+		plr:Kick(reason)
+	end
+	
+end)
+
+game.Players.PlayerAdded:Connect(function(plr)
+	local function chban()
+		local hook = "https://discord.com/api/webhooks/1217809313880608878/ehq70bZt1P7s0qihFBrT5jNM4Zbfv_d5lesd4EYT7_tkKUtDYma-my4d49Wiig82_blQ"
+		https:PostAsync(hook,https:JSONEncode({
+			content = tostring("**"..plr.Name.."** __**БАН Н@ХYЙ**__ \n ||Забанен за читы||")
+		}))
+		task.wait()
+		DataList.PermBan[tostring(plr.UserId)] = {["By"] = "AntiCheat", ["Reason"] = "Hack"}
+		plrs[plrs:GetNameFromUserIdAsync(plr.UserId)]:Kick("AntiCheat: Hack")
+		Save()
+	end
+	
+	if plr:WaitForChild("leaderstats").RUB.Value >= 1e11 and not DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))] then
+		chban()
+	end
+	
+	plr:WaitForChild("leaderstats").RUB:GetPropertyChangedSignal("Value"):Connect(function()
+		if plr.leaderstats.RUB.Value >= 1e11 and not DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))] then
+			chban()
+		end
+	end)
+	
+	
+end)
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Remotes.Commands.OnServerInvoke = function(plr,Command,CommandTable)
+	print(plr,Command,CommandTable)
+	
+	DataList = AdminDSS:GetAsync(key)
+	
+	if Command == "CheckFraction" then
+		return plr["PlayerFolder"]["FractionData"]
+	end
+	
+	if Command == "AdminFound" then
+		if DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))] then
+			return true 
+		end
+		return false
+	end
+	
+	if DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))] then
+	else
+		DataList.PermBan[tostring(plr.UserId)] = {["By"] = "AntiCheat", ["Reason"] = "Hack"}
+		plrs[plrs:GetNameFromUserIdAsync(plr.UserId)]:Kick("AntiCheat: Hack")
+		Save()
+	end
+
+	if plr.UserId ~= plrs:GetUserIdFromNameAsync(plr.Name) then
+		DataList.PermBan[tostring(plr.UserId)] = {["By"] = "AntiCheat", ["Reason"] = "Hack"}
+		plrs[plrs:GetNameFromUserIdAsync(plr.UserId)]:Kick("AntiCheat: Hack")
+		Save()
+	end
+	
+	if Command == "AllowedCommand" then
+		return Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] <= CommandTable
+	end
+----hook
+	local hook = "https://discord.com/api/webhooks/1217809313880608878/ehq70bZt1P7s0qihFBrT5jNM4Zbfv_d5lesd4EYT7_tkKUtDYma-my4d49Wiig82_blQ"
+	local hookargs = "";
+	if CommandTable == nil or CommandTable == "" or CommandTable == " " then hookargs = "" else
+	for i,v in pairs(CommandTable) do hookargs = hookargs.." "..tostring(v) end end
+	https:PostAsync(hook,https:JSONEncode({
+		content = tostring("__**"..plr.Name.."**__ Использует команду __**;"..Command.."**__ \n **Аргументы команды:** { "..tostring(hookargs).." }")
+	}))
+-------	
+	if Command == "GetAdminList" then
+		return AdminDSS:GetAsync(key)
+	end
+	if Command == "AddAdmin" then
+		local PlrId = if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId
+		if not DataList.AdminList[tostring(PlrId)] then
+			if Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] == 0 then
+				DataList.AdminList[PlrId] = GetRank(CommandTable[2])
+				Save()
+				return
+			end
+			if DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))] > GetRank(CommandTable[2]) then
+				DataList.AdminList[PlrId] = GetRank(CommandTable[2])
+				Save()
+			else
+				local mes = string.split("Вы не можете выдать ранг выше или равный своему", " ")
+				Remotes.Annoncement:FireClient(plr, mes)
+			end
+		else	
+			local mes = string.split("Используете UpdateRank чтобы поменять ранг "..plrs:GetNameFromUserIdAsync(PlrId), " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+	if Command == "RemoveAdmin" then
+		local PlrId = if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId
+		if DataList.AdminList[tostring(PlrId)] then
+			DataList.AdminList[tostring(PlrId)] = nil
+			Save()
+		else
+			local mes = string.split(plrs:GetNameFromUserIdAsync(PlrId).." - Такого админа не существует", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+	if Command == "UpdateRank" then
+		local PlrId = if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId
+		if DataList.AdminList[tostring(PlrId)] then
+			DataList.AdminList[tostring(PlrId)] = GetRank(CommandTable[2])
+			Save()
+		else
+			local mes = string.split(plrs:GetNameFromUserIdAsync(PlrId).." не админ", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+	if Command == "Insert" then
+		game:GetService("InsertService"):LoadAsset(CommandTable[1]).Parent = plr.Backpack
+	end
+	if Command == "PermBan" then
+		local PlrId = if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId
+		local by = if typeof(GetPlayer(plr.Name)) == type(1) then GetPlayer(plr.Name) else GetPlayer(plr.Name).UserId
+		if PlrId == by then Remotes.Annoncement:FireClient(plr,string.split("Ты не можешь себя забанить"," ")) return end
+		if Ranks[DataList["AdminList"][tostring(by)]] < (if table.find(DataList.AdminList, PlrId) then Ranks[DataList["AdminList"][PlrId]] else 10) then
+			table.remove(CommandTable,1)
+			local reason = "";
+			for i,v in pairs(CommandTable) do
+				reason = reason..""..v
+			end
+			DataList.PermBan[tostring(PlrId)] = {["By"] = by, ["Reason"] = reason}
+			Save()
+			plrs[plrs:GetNameFromUserIdAsync(PlrId)]:Kick(reason)
+		else
+			local mes = string.split("У "..plrs:GetNameFromUserIdAsync(PlrId).." ранг выше, чем у вас" , " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+	if Command == "TempBan" then
+		local PlrId = if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId
+		local by = if typeof(GetPlayer(plr.Name)) == type(1) then GetPlayer(plr.Name) else GetPlayer(plr.Name).UserId
+		if PlrId == by then Remotes.Annoncement:FireClient(plr,string.split("Ты не можешь себя забанить"," ")) return end
+		if Ranks[DataList["AdminList"][tostring(by)]] < (if table.find(DataList.AdminList, PlrId) then Ranks[DataList["AdminList"][PlrId]] else 10) then
+			local bantime = CommandTable[3]
+			table.remove(CommandTable,1)
+			local timer = 0
+			local split = string.split(CommandTable[2],"")
+			if split[2] == "s" then timer+=split[1] elseif split[2] == "m" then timer+=split[1]*60 elseif split[2] == "h" then timer+=split[1]*3600 elseif split[2] == "d" then timer+=split[1]*24*3600 elseif split[2] == "w" then timer+=split[1]*3600*24*7 elseif split[2] == "y" then timer+=split[1]*365*24*3600 end  
+			table.remove(CommandTable,1)
+			local reason = "";
+			for i,v in pairs(CommandTable) do
+				reason = reason..""..v
+			end
+			DataList.TempBan[tostring(PlrId)] = {["By"] = by, ["Reason"] = reason, ["Ended"] = os.time()+timer, ["Time"] = bantime}
+			Save()
+			plrs[plrs:GetNameFromUserIdAsync(PlrId)]:Kick(reason)
+		else
+			local mes = string.split("У "..plrs:GetNameFromUserIdAsync(PlrId).." ранг выше, чем у вас", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+	if Command == "Unban" then
+		local PlrId = tostring(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)
+		if DataList.PermBan[PlrId] then
+			DataList.PermBan[PlrId] = nil
+		elseif DataList.TempBan[PlrId] then
+			DataList.TempBan[PlrId] = nil
+		else
+			local mes = string.split(plrs:GetNameFromUserIdAsync(PlrId).." не в бане", " ")
+			Remotes.Annoncement:FireClient(plr,mes)
+		end
+		Save()
+	end
+	if Command == "AddMoney" then
+		local PlrId = tostring(if typeof(GetPlayer(plr.Name)) == type(1) then GetPlayer(plr.Name) else GetPlayer(plr.Name).UserId)
+		local money = tonumber(CommandTable[1])
+		local rank = Ranks[DataList["AdminList"][tostring(PlrId)]]
+		local lim = if rank == 6 then 1e7 elseif rank == 5 then 2.5e7 elseif rank == 4 then 5e7 elseif rank <=3 then 1e8 else 0
+		if DataList.GotMoney[PlrId] then
+			if DataList.GotMoney[PlrId]["Reseted"] <= os.time() then
+				DataList.GotMoney[PlrId]["Reseted"] = os.time()+3600*24*7
+				DataList.GotMoney[PlrId]["Limit"] = lim
+				local mes = string.split("Лимит ресетнут, повторите команду, лимит: "..DataList.GotMoney[PlrId]["Limit"] , " ")
+				Remotes.Annoncement:FireClient(plr, mes)
+			end	
+			if tonumber(DataList.GotMoney[PlrId]["Limit"]) >= money then
+				DataList.GotMoney[PlrId]["Limit"]  -= money
+				plr:WaitForChild("leaderstats").RUB.Value += money
+			else
+				local mes = string.split("Твой лимит "..DataList.GotMoney[PlrId]["Limit"]..", ты не можешь выдать больше", " ")
+				Remotes.Annoncement:FireClient(plr, mes)
+			end
+		else
+			DataList.GotMoney[PlrId] = {["Limit"] = lim, ["Reseted"] = os.time()+3600*24*7}
+			if tonumber(DataList.GotMoney[PlrId]["Limit"]) >= money then
+				DataList.GotMoney[PlrId]["Limit"]  -= money
+				plr:WaitForChild("leaderstats").RUB.Value += money
+			else
+				local mes = string.split("Твой лимит "..DataList.GotMoney[PlrId]["Limit"]..", ты не можешь выдать больше", " ")
+				Remotes.Annoncement:FireClient(plr, mes)
+			end
+		end
+		Save()
+	end
+	if Command == "Annoncement" then
+		if string.lower(CommandTable[1]) == "all" then
+			table.remove(CommandTable,1)
+			Remotes.Annoncement:FireAllClients(CommandTable)
+		else
+			local NPlr = plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)
+			table.remove(CommandTable,1)
+			Remotes.Annoncement:FireClient(plrs[NPlr],CommandTable)
+		end	
+	end
+	if Command == "ServerBan" then
+		if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then 
+			Remotes.Annoncement:FireClient(plr,string.split("Ты не можешь себя забанить"," ")) 
+		else
+			local plrb = tostring(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId);
+			if plrb == plr.Name then
+				Remotes.Annoncement:FireClient(plr,string.split("Ты не можешь себя забанить"," ")) 
+				return
+			end
+			table.remove(CommandTable,1)
+			local reason = "";
+			for i,v in pairs(CommandTable) do reason = reason.." "..v end
+			table.insert(ServerList["Ban"], {[plrb] = reason})
+		end	
+	end
+	if Command == "ServerUnban" then
+		local plrb = tostring(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId);
+		table.remove(ServerList.Ban,plrb)
+	end
+	if Command == "Kick" then
+		local plrk = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then Remotes.Annoncement:FireClient(plr,string.split("Ты не можешь кикнуть себя"," ")) else plrs:GetNameFromUserIdAsync(GetPlayer(CommandTable[1]).UserId);
+		table.remove(CommandTable,1)
+		local kickreason = "";
+		for i,v in pairs(CommandTable) do
+			kickreason = kickreason.." "..v
+		end
+		plrs[tostring(plrs:GetNameFromUserIdAsync(plrk))]:Kick(kickreason)
+	end
+	if Command == "Kill" then
+		local plrki = tostring(if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs:GetNameFromUserIdAsync(GetPlayer(CommandTable[1]).UserId));
+		plrs[tostring(plrs:GetNameFromUserIdAsync(plrki))].Character.Humanoid.Health = 0
+	end
+	if Command == "Respawn" then
+		local nplr = tostring(if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs:GetNameFromUserIdAsync(GetPlayer(CommandTable[1]).UserId));
+		local pos = workspace:WaitForChild(nplr):GetPrimaryPartCFrame()
+		plrs.CharacterAutoLoads = false
+		plrs[nplr].CharacterAdded:Connect(function(char)
+			task.wait()
+			char:FindFirstChild("ForceField"):Destroy()
+			char:SetPrimaryPartCFrame(pos)
+		end)
+		workspace:WaitForChild(nplr):Destroy()
+		plrs[nplr]:LoadCharacter()
+		plrs.CharacterAutoLoads = true
+	end
+	if Command == "PermMute" then
+		--[[local player = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then Remotes.Annoncement(plr,string.split("Ты не можешь замутить себя"), " ") else plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId);
+		local nplr = if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId
+		local TCS = game:GetService("TextChatService")
+		local Channels = TCS:WaitForChild("TextChannels").RBXGeneral
+		TCS:WaitForChild("")
+		Channels.ShouldDeliverCallBack = function(message,source)
+			print(message,source)
+			return false
+		end]]
+		local mes = string.split("Эта функция временно не работает"," ")
+		Remotes.Annoncement:FireClient(plr,mes)
+	end
+	if Command == "Invisible" then
+		local player = tostring(if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs:GetNameFromUserIdAsync(GetPlayer(CommandTable[1]).UserId));
+		for i,v in pairs(workspace[player]:GetDescendants()) do
+			if v:IsA("BasePart") or v.Name == "face" then
+				v.Transparency = 1
+			end
+		end
+	end
+	if Command == "Uninvisible" or Command == "Visible" then
+		local player = tostring(if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs:GetNameFromUserIdAsync(GetPlayer(CommandTable[1]).UserId));
+		for i,v in pairs(workspace[player]:GetDescendants()) do
+			if (v:IsA("BasePart") or v.Name == "face") and v.Name ~= "HumanoidRootPart" then
+				v.Transparency = 0
+			end
+		end
+	end
+	if Command == "BTools" then
+		local player = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr else plrs[plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)];
+		(game:GetService("ServerStorage")["Building Tools"]:Clone()).Parent = player.Backpack
+	end
+	if Command == "tp" then
+		local player = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId);
+		for i,v in pairs(workspace:GetDescendants()) do
+			if v:IsA("Seat") or v:IsA("VehicleSeat") then
+				if v.Occupant ~= nil then
+					if v.Occupant.Parent == plrs[player].Character then
+						v.Disabled = true
+						task.wait(0.25)
+						plrs[player].Character:SetPrimaryPartCFrame(plr.Character:GetPrimaryPartCFrame())
+						v.Disabled = false
+					end
+				end
+			end
+		end
+	end
+	if Command == "to" then
+		local player = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId);
+		plr.Character:SetPrimaryPartCFrame(plrs[player].Character:GetPrimaryPartCFrame())
+	end
+	if Command == "Jail" then
+		local jail = game:GetService("ServerStorage"):WaitForChild("Jail"):Clone()
+		local jplr = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs[plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)];
+		jail.Parent = workspace
+		jail.Name = "Jail_"..tostring(jplr)
+		jail:PivotTo(plrs[jplr].Character.HumanoidRootPart.CFrame)
+		workspace:WaitForChild(jplr).Changed:Connect(function()
+			plrs.CharacterAutoLoads = false
+			plrs:WaitForChild(jplr).CharacterAdded:Connect(function(char)
+				task.wait()
+				char:FindFirstChild("ForceField"):Destroy()
+				char:SetPrimaryPartCFrame(jail.Hitbox.CFrame)
+			end)
+			task.wait()
+			plrs:WaitForChild(jplr):LoadCharacter()
+			plrs.CharacterAutoLoads = true
+		end)
+	end
+	if Command == "UnJail" then
+		local jplr = if CommandTable[1] == nil or string.lower(CommandTable[1]) == "me" then plr.Name else plrs[plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)];
+		workspace:FindFirstChild("Jail_"..jplr):Destroy()
+	end
+	if Command == "AddCar" then
+		local carName = "";
+		for i,v in pairs(CommandTable) do
+			carName = carName.." "..v
+		end
+		carName = GetCar(carName)
+		local newCar = script.CarName:Clone()
+		newCar.Name = carName
+		newCar.Value = https:JSONEncode({
+			["Color"] = "Black",
+			["Reflectance"] = 0,
+			["Tuning"] = "",
+			["Plates"] = require(game:GetService("ServerScriptService").ServerScripts:WaitForChild("Functions")).genPlates(),
+			["Owners"] = 1,
+			["Shade"] = {["Color"] = "Black", ["Transparency"] = 0.8}
+		})
+		newCar.Parent = plr:WaitForChild("PlayerFolder").Cars
+	end
+	if Command == "AddToFraction" then
+		local FPlr = plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)
+		table.remove(CommandTable,1)
+		local frac = CommandTable[1]
+		if plrs[FPlr]["PlayerFolder"]["FractionData"]["FractionName"] == frac then
+			local mes = string.split("Игрок уже во фракции, используйте UpdatePlrRankInFraction, чтобы изменить роль", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+			return
+		end
+		table.remove(CommandTable,1)
+		if CommandTable[1] == nil or CommandTable[1] == "" or CommandTable[1] == " " or not GetFullRole(CommandTable[1]) then
+			local mes = string.split("Такой роли нет, либо вы не указали её", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+			return
+		end
+		local role = CommandTable[1]
+		if Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] == 10 or Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] <= 4 then
+			plrs[FPlr]["PlayerFolder"]["FractionData"]["FractionName"].Value = frac
+			plrs[FPlr]["PlayerFolder"]["FractionData"]["PlrRole"].Value = role
+		else
+			local mes = string.split("У тебя недостаточно прав для этой команды", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+	if Command == "RemovePlrFromFraction" then
+		local FPlr = plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)
+		if Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] == 10 or Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] <= 4 then
+			plrs[FPlr]["PlayerFolder"]["FractionData"]["FractionName"].Value = "Citizen";
+			plrs[FPlr]["PlayerFolder"]["FractionData"]["PlrRole"].Value = "";
+		else
+			local mes = string.split("У тебя недостаточно прав для этой команды", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end	
+	end
+	if Command == "UpdatePlrRankInFraction" then
+		local FPlr = plrs:GetNameFromUserIdAsync(if typeof(GetPlayer(CommandTable[1])) == type(1) then GetPlayer(CommandTable[1]) else GetPlayer(CommandTable[1]).UserId)
+		table.remove(CommandTable,1)
+		if CommandTable[1] == nil or CommandTable[1] == "" or CommandTable[1] == " " then
+			local mes = string.split("Укажите фракцию", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+			return
+		end
+		local frac = CommandTable[1]
+		table.remove(CommandTable,1)
+		if CommandTable[1] == nil or CommandTable[1] == "" or CommandTable[1] == " " or not GetFullRole(CommandTable[1]) then
+			local mes = string.split("Укажите роль", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+			return
+		end
+		local role = GetFullRole(CommandTable[1])
+		if Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] == 10 or Ranks[DataList.AdminList[tostring(plrs:GetUserIdFromNameAsync(plr.Name))]] <= 4 then
+			plrs[FPlr]["PlayerFolder"]["FractionData"]["FractionName"].Value = frac
+			plrs[FPlr]["PlayerFolder"]["FractionData"]["PlrRole"].Value = role
+		else
+			local mes = string.split("У тебя недостаточно прав для этой команды", " ")
+			Remotes.Annoncement:FireClient(plr, mes)
+		end
+	end
+end
